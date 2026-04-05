@@ -124,11 +124,11 @@ typedef struct
 //Function Prototype
 //1- i2c Handler 
 void MPU6050_Init(I2C_HandleTypeDef *I2Chnd);
-//2- i2c Read
-void I2C_Read(uint8_t ADDR, uint8_t *i2cBuf, uint8_t NofData);
-//3- i2c Write 8 Bit
-void I2C_Write8(uint8_t ADDR, uint8_t data);
-//4- MPU6050 Initialaztion Configuration 
+//2- i2c Read (returns HAL_StatusTypeDef for error checking)
+HAL_StatusTypeDef I2C_Read(uint8_t ADDR, uint8_t *i2cBuf, uint8_t NofData);
+//3- i2c Write 8 Bit (returns HAL_StatusTypeDef for error checking)
+HAL_StatusTypeDef I2C_Write8(uint8_t ADDR, uint8_t data);
+//4- MPU6050 Initialization Configuration 
 void MPU6050_Config(MPU_ConfigTypeDef *config);
 //5- Get Sample Rate Divider
 uint8_t MPU6050_Get_SMPRT_DIV(void);
@@ -139,9 +139,9 @@ uint8_t MPU6050_Get_FSYNC(void);
 //8- Set External Frame Sync.
 void MPU6050_Set_FSYNC(enum EXT_SYNC_SET_ENUM ext_Sync);
 //9- Get Accel Raw Data
-void MPU6050_Get_Accel_RawData(RawData_Def *rawDef);//************
+void MPU6050_Get_Accel_RawData(RawData_Def *rawDef);
 //10- Get Accel scaled data
-void MPU6050_Get_Accel_Scale(ScaledData_Def *scaledDef);//***********
+void MPU6050_Get_Accel_Scale(ScaledData_Def *scaledDef);
 //11- Get Accel calibrated data
 void MPU6050_Get_Accel_Cali(ScaledData_Def *CaliDef);
 //12- Get Gyro Raw Data
@@ -150,3 +150,13 @@ void MPU6050_Get_Gyro_RawData(RawData_Def *rawDef);
 void MPU6050_Get_Gyro_Scale(ScaledData_Def *scaledDef);
 //14- Accel Calibration
 void _Accel_Cali(float x_min, float x_max, float y_min, float y_max, float z_min, float z_max);
+//15- Gyro Calibration (call while sensor is stationary; numSamples recommended >= 500)
+//    Returns HAL_OK on success, HAL_ERROR if no valid I2C samples were collected
+HAL_StatusTypeDef _Gyro_Cali(uint16_t numSamples);
+//16- Get Gyro calibrated data
+void MPU6050_Get_Gyro_Cali(ScaledData_Def *CaliDef);
+//17- Read WHO_AM_I register for device verification (expected value: 0x68; returns 0x00 on I2C error)
+uint8_t MPU6050_ReadID(void);
+//18- Get internal temperature sensor reading (degrees Celsius)
+//    Returns HAL_OK on success; *Temperature is valid only when HAL_OK is returned
+HAL_StatusTypeDef MPU6050_Get_Temperature(float *Temperature);
