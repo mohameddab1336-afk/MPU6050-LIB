@@ -25,15 +25,19 @@ References:
 static I2C_HandleTypeDef i2cHandler;
 //2- Accel & Gyro Scaling Factor
 static float accelScalingFactor, gyroScalingFactor;
-//3- Bias varaibles
+//3- Bias variables
 static float A_X_Bias = 0.0f;
 static float A_Y_Bias = 0.0f;
 static float A_Z_Bias = 0.0f;
+//4- Gyro Bias variables
+static float G_X_Bias = 0.0f;
+static float G_Y_Bias = 0.0f;
+static float G_Z_Bias = 0.0f;
 
 static int16_t GyroRW[3];
 
-//Fucntion Definitions
-//1- i2c Handler 
+//Function Definitions
+//1- i2c Handler
 void MPU6050_Init(I2C_HandleTypeDef *I2Chnd)
 {
 	//Copy I2C CubeMX handle to local library
@@ -41,28 +45,31 @@ void MPU6050_Init(I2C_HandleTypeDef *I2Chnd)
 }
 
 //2- i2c Read
-void I2C_Read(uint8_t ADDR, uint8_t *i2cBif, uint8_t NofData)
+HAL_StatusTypeDef I2C_Read(uint8_t ADDR, uint8_t *i2cBif, uint8_t NofData)
 {
 	uint8_t i2cBuf[2];
 	uint8_t MPUADDR;
+	HAL_StatusTypeDef status;
 	//Need to Shift address to make it proper to i2c operation
 	MPUADDR = (MPU_ADDR<<1);
 	i2cBuf[0] = ADDR;
-	HAL_I2C_Master_Transmit(&i2cHandler, MPUADDR, i2cBuf, 1, 10);
-	HAL_I2C_Master_Receive(&i2cHandler, MPUADDR, i2cBif, NofData, 100);
+	status = HAL_I2C_Master_Transmit(&i2cHandler, MPUADDR, i2cBuf, 1, 10);
+	if(status != HAL_OK)
+		return status;
+	return HAL_I2C_Master_Receive(&i2cHandler, MPUADDR, i2cBif, NofData, 100);
 }
 
 //3- i2c Write
-void I2C_Write8(uint8_t ADDR, uint8_t data)
+HAL_StatusTypeDef I2C_Write8(uint8_t ADDR, uint8_t data)
 {
 	uint8_t i2cData[2];
 	i2cData[0] = ADDR;
 	i2cData[1] = data;
 	uint8_t MPUADDR = (MPU_ADDR<<1);
-	HAL_I2C_Master_Transmit(&i2cHandler, MPUADDR, i2cData, 2,100);
+	return HAL_I2C_Master_Transmit(&i2cHandler, MPUADDR, i2cData, 2, 100);
 }
 
-//4- MPU6050 Initialaztion Configuration 
+//4- MPU6050 Initialization Configuration 
 void MPU6050_Config(MPU_ConfigTypeDef *config)
 {
 	uint8_t Buffer = 0;
@@ -184,7 +191,7 @@ void MPU6050_Get_Accel_RawData(RawData_Def *rawDef)
 	uint8_t AcceArr[6], GyroArr[6];
 	
 	I2C_Read(INT_STATUS_REG, &i2cBuf[1],1);
-	if((i2cBuf[1]&&0x01))
+	if((i2cBuf[1] & 0x01))
 	{
 		I2C_Read(ACCEL_XOUT_H_REG, AcceArr,6);
 		
@@ -258,4 +265,75 @@ void _Accel_Cali(float x_min, float x_max, float y_min, float y_max, float z_min
 	
 	//3* Z-Axis calibrate
 	A_Z_Bias		= (z_max + z_min)/2.0f;
+}
+
+//15- Gyro Calibration
+//    Call this function while the sensor is stationary.
+//    numSamples: number of samples to average for bias estimation (min 10, recommended 500)
+//    Note: HAL_Delay(1) between samples ensures fresh readings; ~1ms per sample execution time.
+//    Returns HAL_OK on success, HAL_ERROR if no valid I2C samples were collected
+HAL_StatusTypeDef _Gyro_Cali(uint16_t numSamples)
+{
+	float rawSumX = 0.0f, rawSumY = 0.0f, rawSumZ = 0.0f;
+	uint8_t GyroArr[6];
+	uint16_t validSamples = 0;
+	
+	for(uint16_t i = 0; i < numSamples; i++)
+	{
+		if(I2C_Read(GYRO_XOUT_H_REG, GyroArr, 6) == HAL_OK)
+		{
+			rawSumX += (int16_t)((GyroArr[0]<<8) | GyroArr[1]);
+			rawSumY += (int16_t)((GyroArr[2]<<8) | GyroArr[3]);
+			rawSumZ += (int16_t)((GyroArr[4]<<8) | GyroArr[5]);
+			validSamples++;
+		}
+		HAL_Delay(1);
+	}
+	
+	if(validSamples == 0)
+		return HAL_ERROR;
+	
+	// Average the raw counts and convert to deg/s for direct subtraction in MPU6050_Get_Gyro_Cali
+	G_X_Bias = (rawSumX / (float)validSamples) * gyroScalingFactor;
+	G_Y_Bias = (rawSumY / (float)validSamples) * gyroScalingFactor;
+	G_Z_Bias = (rawSumZ / (float)validSamples) * gyroScalingFactor;
+	return HAL_OK;
+}
+
+//16- Get Gyro calibrated data
+void MPU6050_Get_Gyro_Cali(ScaledData_Def *CaliDef)
+{
+	ScaledData_Def GyroScaled;
+	MPU6050_Get_Gyro_Scale(&GyroScaled);
+	
+	CaliDef->x = GyroScaled.x - G_X_Bias; // x-Axis
+	CaliDef->y = GyroScaled.y - G_Y_Bias; // y-Axis
+	CaliDef->z = GyroScaled.z - G_Z_Bias; // z-Axis
+}
+
+//17- Read WHO_AM_I register for device verification
+//    Returns 0x68 if the correct MPU6050 device is connected, 0x00 on I2C error
+uint8_t MPU6050_ReadID(void)
+{
+	uint8_t Buffer = 0;
+	if(I2C_Read(WHO_AM_I_REG, &Buffer, 1) != HAL_OK)
+		return 0x00;
+	return Buffer;
+}
+
+//18- Get internal temperature sensor reading (degrees Celsius)
+//    Formula from MPU6050 datasheet: Temp[°C] = TEMP_OUT / 340 + 36.53
+//    Returns HAL_StatusTypeDef; *Temperature is only valid when HAL_OK is returned
+HAL_StatusTypeDef MPU6050_Get_Temperature(float *Temperature)
+{
+	uint8_t TempArr[2];
+	int16_t tempRaw;
+	HAL_StatusTypeDef status;
+	
+	status = I2C_Read(TEMP_OUT_H_REG, TempArr, 2);
+	if(status != HAL_OK)
+		return status;
+	tempRaw = (int16_t)((TempArr[0]<<8) | TempArr[1]);
+	*Temperature = (tempRaw / 340.0f) + 36.53f;
+	return HAL_OK;
 }
