@@ -121,6 +121,29 @@ typedef struct
 }ScaledData_Def;
 
 
+/*
+ * Madgwick AHRS filter integration
+ *
+ * Include Madgwick_AHRS.h alongside this header to compute Roll, Pitch,
+ * and Yaw from the raw accelerometer and gyroscope data provided by this
+ * library.  Typical usage (drone main loop):
+ *
+ *   #include "TJ_MPU6050.h"
+ *   #include "Madgwick_AHRS.h"
+ *
+ *   Madgwick_Init(0.1f, 200.0f);   // beta=0.1, 200 Hz sample rate
+ *
+ *   ScaledData_Def accel, gyro;
+ *   MPU6050_Get_Accel_Scale(&accel);
+ *   MPU6050_Get_Gyro_Scale(&gyro);
+ *
+ *   Madgwick_UpdateIMU(gyro.x, gyro.y, gyro.z,
+ *                      accel.x, accel.y, accel.z);
+ *
+ *   float roll, pitch, yaw;
+ *   Madgwick_GetEulerAngles(&roll, &pitch, &yaw);
+ */
+
 //Function Prototype
 //1- i2c Handler 
 void MPU6050_Init(I2C_HandleTypeDef *I2Chnd);
