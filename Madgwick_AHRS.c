@@ -96,7 +96,7 @@ void Madgwick_UpdateIMU(float gx, float gy, float gz,
         q2q2 = q2 * q2;
         q3q3 = q3 * q3;
 
-        /* Gradient decent algorithm corrective step */
+        /* Gradient descent algorithm corrective step */
         s0 = v4q0 * q2q2 + v2q2 * ax + v4q0 * q1q1 - v2q1 * ay;
         s1 = v4q1 * q3q3 - v2q3 * ax + 4.0f * q0q0 * q1 - v2q0 * ay - v4q1
              + v8q1 * q1q1 + v8q1 * q2q2 + v4q1 * az;
