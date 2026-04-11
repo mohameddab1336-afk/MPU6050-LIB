@@ -1,19 +1,7 @@
 /*
 library name: 	MPU6050 6 axis module
-written by: 		T.Jaber
-Date Written: 	25 Mar 2019
-Last Modified: 	20 April 2019 by Mohamed Yaqoob
-Description: 		MPU6050 Module Basic Functions Device Driver library that use HAL libraries.
-References:			
-								- MPU6050 Registers map: https://www.invensense.com/wp-content/uploads/2015/02/MPU-6000-Register-Map1.pdf
-								- Jeff Rowberg MPU6050 library: https://github.com/jrowberg/i2cdevlib/tree/master/Arduino/MPU6050
-								
-* Copyright (C) 2019 - T. Jaber
-   This is a free software under the GNU license, you can redistribute it and/or modify it under the terms
-   of the GNU General Public Licenseversion 3 as published by the Free Software Foundation.
-	
-   This software library is shared with puplic for educational purposes, without WARRANTY and Author is not liable for any damages caused directly
-   or indirectly by this software, read more about this on the GNU General Public License.
+written by: 		D.Mohamed
+
 
 */
 
@@ -144,9 +132,13 @@ void MPU6050_Get_Accel_RawData(RawData_Def *rawDef);//************
 void MPU6050_Get_Accel_Scale(ScaledData_Def *scaledDef);//***********
 //11- Get Accel calibrated data
 void MPU6050_Get_Accel_Cali(ScaledData_Def *CaliDef);
-//12- Get Gyro Raw Data
+//12- Get Gyro calibrated data
+void MPU6050_Get_Gyro_Cali(ScaledData_Def *calibratedDef);
+//13- Get Gyro Raw Data
 void MPU6050_Get_Gyro_RawData(RawData_Def *rawDef);
-//13- Get Gyro scaled data
+//14- Get Gyro scaled data
 void MPU6050_Get_Gyro_Scale(ScaledData_Def *scaledDef);
-//14- Accel Calibration
+//15- Accel Calibration
 void _Accel_Cali(float x_min, float x_max, float y_min, float y_max, float z_min, float z_max);
+//16- Gyro Calibration
+void _Gyro_Cali(float gx_offset, float gy_offset, float gz_offset);
