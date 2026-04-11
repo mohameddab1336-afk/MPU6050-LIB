@@ -1,19 +1,7 @@
 /*
 library name: 	MPU6050 6 axis module
-written by: 		T.Jaber
-Date Written: 	25 Mar 2019
-Last Modified: 	20 April 2019 by Mohamed Yaqoob
-Description: 		MPU6050 Module Basic Functions Device Driver library that use HAL libraries.
-References:			
-								- MPU6050 Registers map: https://www.invensense.com/wp-content/uploads/2015/02/MPU-6000-Register-Map1.pdf
-								- Jeff Rowberg MPU6050 library: https://github.com/jrowberg/i2cdevlib/tree/master/Arduino/MPU6050
-								
-* Copyright (C) 2019 - T. Jaber
-   This is a free software under the GNU license, you can redistribute it and/or modify it under the terms
-   of the GNU General Public Licenseversion 3 as published by the Free Software Foundation.
-	
-   This software library is shared with puplic for educational purposes, without WARRANTY and Author is not liable for any damages caused directly
-   or indirectly by this software, read more about this on the GNU General Public License.
+written by: 		D.Mohamed
+
 
 */
 
@@ -29,7 +17,9 @@ static float accelScalingFactor, gyroScalingFactor;
 static float A_X_Bias = 0.0f;
 static float A_Y_Bias = 0.0f;
 static float A_Z_Bias = 0.0f;
-
+static float G_X_Bias = 0.0f;
+static float G_Y_Bias = 0.0f;
+static float G_Z_Bias = 0.0f;
 static int16_t GyroRW[3];
 
 //Fucntion Definitions
@@ -184,7 +174,7 @@ void MPU6050_Get_Accel_RawData(RawData_Def *rawDef)
 	uint8_t AcceArr[6], GyroArr[6];
 	
 	I2C_Read(INT_STATUS_REG, &i2cBuf[1],1);
-	if((i2cBuf[1]&&0x01))
+	if(i2cBuf[1]&0x01)
 	{
 		I2C_Read(ACCEL_XOUT_H_REG, AcceArr,6);
 		
@@ -224,7 +214,24 @@ void MPU6050_Get_Accel_Cali(ScaledData_Def *CaliDef)
 	CaliDef->y = (AccelScaled.y) - A_Y_Bias;// y-Axis
 	CaliDef->z = (AccelScaled.z) - A_Z_Bias;// z-Axis
 }
-//12- Get Gyro Raw Data
+//12- Get Gyro calibrated data
+void MPU6050_Get_Gyro_Cali(ScaledData_Def *calibratedDef)
+{
+  RawData_Def myGyroRaw;
+  MPU6050_Get_Gyro_RawData(&myGyroRaw);
+  
+  // Conversion d'échelle
+  float gyro_x = (myGyroRaw.x) * gyroScalingFactor;
+  float gyro_y = (myGyroRaw.y) * gyroScalingFactor;
+  float gyro_z = (myGyroRaw.z) * gyroScalingFactor;
+  
+  // Application de la calibration
+  calibratedDef->x = gyro_x - G_X_Bias;
+  calibratedDef->y = gyro_y - G_Y_Bias;
+  calibratedDef->z = gyro_z - G_Z_Bias;
+}
+
+//13- Get Gyro Raw Data
 void MPU6050_Get_Gyro_RawData(RawData_Def *rawDef)
 {
 	
@@ -235,7 +242,7 @@ void MPU6050_Get_Gyro_RawData(RawData_Def *rawDef)
 	
 }
 
-//13- Get Gyro scaled data
+//14- Get Gyro scaled data
 void MPU6050_Get_Gyro_Scale(ScaledData_Def *scaledDef)
 {
 	RawData_Def myGyroRaw;
@@ -247,7 +254,7 @@ void MPU6050_Get_Gyro_Scale(ScaledData_Def *scaledDef)
 	scaledDef->z = (myGyroRaw.z)*gyroScalingFactor; // z-Axis
 }
 
-//14- Accel Calibration
+//15- Accel Calibration
 void _Accel_Cali(float x_min, float x_max, float y_min, float y_max, float z_min, float z_max)
 {
 	//1* X-Axis calibrate
@@ -259,3 +266,14 @@ void _Accel_Cali(float x_min, float x_max, float y_min, float y_max, float z_min
 	//3* Z-Axis calibrate
 	A_Z_Bias		= (z_max + z_min)/2.0f;
 }
+//16- gyro Calibration
+void _Gyro_Cali(float gx_offset, float gy_offset, float gz_offset)
+{
+  G_X_Bias = gx_offset;
+  G_Y_Bias = gy_offset;
+  G_Z_Bias = gz_offset;
+}
+/*
+ * Fonction qui retourne Roll, Pitch, Yaw
+ * @return Structure contenant les 3 angles en degrés
+ */
