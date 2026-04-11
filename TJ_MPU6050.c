@@ -6,7 +6,7 @@ written by: 		D.Mohamed
 */
 
 //Header files
-#include "TJ_MPU6050.h"
+#include "DM_MPU6050.h"
 
 //Library Variable
 //1- I2C Handle 
